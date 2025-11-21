@@ -15,15 +15,10 @@
 2.  [Estructura del Proyecto](#-estructura-del-proyecto)
 3.  [Sistema de Diseño (Design System)](#-sistema-de-diseño-design-system)
 4.  [Módulos y Lógica de Negocio](#-módulos-y-lógica-de-negocio)
-    *   [Autenticación y Onboarding](#41-autenticación-y-onboarding)
-    *   [Dashboard y Analítica](#42-dashboard-y-analítica)
-    *   [Gestión de Clientes (CRM)](#43-gestión-de-clientes-crm)
-    *   [Motor de Campañas](#44-motor-de-campañas)
-    *   [Configuración y Automatización](#45-configuración-y-automatización)
-    *   [Perfil de Usuario](#46-perfil-de-usuario)
 5.  [Integraciones Externas (Simuladas)](#-integraciones-externas-simuladas)
 6.  [Modelo de Datos](#-modelo-de-datos)
 7.  [Instalación y Despliegue](#-instalación-y-despliegue)
+8.  [Guía de Desarrollo y Estándares](#-guía-de-desarrollo-y-estándares)
 
 ---
 
@@ -47,7 +42,7 @@ La estructura de carpetas sigue un patrón de separación por dominios funcional
 /
 ├── components/
 │   ├── Layout.tsx       # Shell principal: Sidebar (Colapsable), Header, Lógica de Menú Móvil.
-│   └── UI.tsx           # UI Kit: Componentes atómicos (Button, Input, Sheet, Popover, etc.).
+│   └── UI.tsx           # UI Kit: Componentes atómicos (Button, Input, Sheet, Popover, Spinner...).
 ├── pages/
 │   ├── Login.tsx        # Entrada: Autenticación de usuario.
 │   ├── Register.tsx     # Entrada: Registro de nuevo Tenant/Empresa.
@@ -80,7 +75,7 @@ Hemos construido un UI Kit interno en `components/UI.tsx` para garantizar consis
 *   **Popover:** Utilizado para filtros complejos, permitiendo mantener la interfaz limpia.
 *   **Feedback Visual:**
     *   **Badges:** Indicadores de estado (Activo, Pendiente, Inactivo) con codificación de color semántica.
-    *   **Loaders:** Estados de carga simulados en botones y transiciones de página.
+    *   **Spinner & PageLoader:** Indicadores de carga SVG optimizados que reemplazan textos estáticos. El componente `Button` tiene soporte nativo para estados de carga mediante la prop `isLoading`.
 
 ---
 
@@ -135,46 +130,6 @@ Hemos construido un UI Kit interno en `components/UI.tsx` para garantizar consis
 
 ---
 
-## 🔌 Integraciones Externas (Simuladas)
-
-Aunque este es un frontend MVP, la arquitectura está preparada para conectarse con APIs reales. Actualmente simulamos:
-
-1.  **Chatwoot (WhatsApp/Omnicanal):**
-    *   **Embed (`/chatwoot-embed`):** Una vista minimalista diseñada para cargarse dentro de un `<iframe>` en el sidebar de Chatwoot, permitiendo a los agentes ver datos del cliente sin salir del chat.
-    *   **API Simulation:** Retrasos artificiales (`setTimeout`) al probar conexiones o enviar campañas.
-
-2.  **Webhooks:**
-    *   La lógica de automatización en `/settings` prepara la estructura de datos para recibir payloads JSON de eventos externos.
-
----
-
-## 💾 Modelo de Datos
-
-Las interfaces principales (`types.ts`) definen el contrato de datos:
-
-```typescript
-// Ejemplo de estructura de Cliente
-interface Client {
-  id: string;
-  name: string;
-  status: 'activo' | 'inactivo' | 'pendiente';
-  bank: string; // Ej: Mercantil, Banesco
-  terminals: number;
-  // ...
-}
-
-// Ejemplo de Tarea de Campaña
-interface CampaignTask {
-  id: string;
-  status: 'draft' | 'sending' | 'completed';
-  progress?: number;
-  audience: number;
-  // ...
-}
-```
-
----
-
 ## 🛠 Instalación y Despliegue
 
 Este proyecto utiliza **pnpm** para una gestión eficiente de dependencias.
@@ -203,4 +158,55 @@ Este proyecto utiliza **pnpm** para una gestión eficiente de dependencias.
 
 ---
 
-**CredicardPOS** - *Innovación en Gestión Financiera.*
+## 📐 Guía de Desarrollo y Estándares
+
+Para mantener la integridad del diseño y la arquitectura del sistema, sigue estas pautas al agregar nuevas funcionalidades.
+
+### 8.1. Cómo crear una nueva página
+
+El proceso para añadir una nueva vista (`/pages`) consta de 4 pasos estrictos:
+
+1.  **Crear el Componente:**
+    *   Crear archivo en `pages/NombrePagina.tsx`.
+    *   El componente debe aceptar `onNavigate` (si requiere navegación) y exportarse como constante nombrada.
+    *   Envuelve el contenido principal en un `div` con `className="animate-in fade-in duration-500"` para mantener las transiciones suaves.
+
+2.  **Registrar el Tipo:**
+    *   Abrir `types.ts`.
+    *   Agregar el string identificador al tipo `PageView`.
+    ```typescript
+    export type PageView = ... | 'mi-nueva-pagina';
+    ```
+
+3.  **Configurar el Enrutador:**
+    *   Abrir `App.tsx`.
+    *   Agregar el `case` correspondiente dentro del switch de `renderPage`.
+    ```typescript
+    case 'mi-nueva-pagina':
+      return <NombrePagina onNavigate={setCurrentPage} />;
+    ```
+
+4.  **Agregar a Navegación (Opcional):**
+    *   Si la página debe aparecer en el Sidebar, abrir `components/Layout.tsx`.
+    *   Agregar el objeto a la constante `navItems` con un icono de `lucide-react`.
+
+### 8.2. Reglas de Estilo (Design System)
+Utiliza siempre los componentes exportados en `components/UI.tsx`. **NO** crees elementos HTML nativos (`<button>`, `<input>`) a menos que sea estrictamente necesario.
+
+*   **Botones:**
+    *   Acciones primarias: `<Button variant="primary">`
+    *   Acciones secundarias/cancelar: `<Button variant="ghost">`
+    *   Acciones asíncronas: Usa siempre la prop `isLoading={estado}` para mostrar el spinner.
+*   **Espaciado:** Usa múltiplos de 4 (Tailwind scale) para márgenes y paddings (ej: `gap-4`, `p-6`, `mt-8`).
+*   **Tipografía:**
+    *   Títulos de página: `text-2xl font-bold text-slate-900`.
+    *   Subtítulos: `text-slate-500 mt-1`.
+    *   Etiquetas (Labels): Usa `<Label>` para formularios.
+
+### 8.3. Gestión de Estado
+*   Para formularios simples: `useState`.
+*   Para formularios complejos (como Wizards): Mantén un objeto de estado único (`formData`) y actualízalo inmutablemente.
+*   **Evita** el prop drilling excesivo. Si un dato se usa en más de 3 niveles de profundidad, considera moverlo a un contexto (aunque en este MVP usamos `mockData` y props directas).
+
+### 8.4. Nuevas Dependencias
+*   Antes de instalar una librería externa,
